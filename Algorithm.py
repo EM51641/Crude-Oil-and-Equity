@@ -1,5 +1,3 @@
-##Code made to run on QuantConnect.com
-
 from datetime import datetime
 
 from clr import AddReference
@@ -28,7 +26,7 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
     
     def Initialize(self):
         # Set the cash we'd like to use for our backtest
-        self.SetCash(100000)
+        self.SetCash(1000000) #We have chosen this number in order to have access to premium slippage fees
 
         # Start and end dates for the backtest.
         self.SetStartDate(2003, 1, 1)
@@ -36,17 +34,39 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
         # Add assets we'd like to incorporate into our portfolio
         self.oil = self.AddData(QuandlOil, 'FRED/DCOILBRENTEU', Resolution.Daily).Symbol
         self.IEF = self.AddEquity('IEF', Resolution.Daily).Symbol
-        self.AddData(TBill, "tbill")
-        self.tbill = self.Securities["tbill"].Symbol
+        self.SetSecurityInitializer(self.CustomSecurityInitializer)
         self.nextLiquidate = self.Time   # Initialize last trade time
         self.rebalance_days = 30
         self.UniverseSettings.Resolution = Resolution.Daily
-        self.selectedequity = 200
+        self.AddUniverse(self.CoarseSelection,self.FineSelectionFunction)
+        self.selectedequity = 1000
+        self.count = 150
         self.symbols = []
         self.Portfolio.MarginModel = PatternDayTradingMarginModel()
         self.Count_liquidations = 0
-        self.AddUniverse(self.Universe.Index.QC500)
         
+    def CustomSecurityInitializer(self, security):
+        security.SetLeverage(4)
+        security.SetDataNormalizationMode(DataNormalizationMode.Raw)
+        
+    def CoarseSelection(self, coarse):
+        
+        if self.Time < self.nextLiquidate:
+            return Universe.Unchanged
+        
+        selected = sorted([x for x in coarse if x.HasFundamentalData and x.Price > 5],
+                          key=lambda x: x.DollarVolume, reverse=True)
+
+        return [x.Symbol for x in selected[:self.selectedequity ] ]
+        
+    def FineSelectionFunction(self, fine):
+        
+        filteredFine = [x for x in fine if x.CompanyReference.IndustryTemplateCode == "T" ]
+
+        self.symbols = [x.Symbol for x in filteredFine][:self.count]
+        
+        return self.symbols 
+    
     def OnData(self,data):
         
         if self.Time < self.nextLiquidate:
@@ -54,13 +74,11 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
         
         hist,crudeoil_history = self.Data_Reframe()
         
-        rf = float(self.Securities[self.tbill].Price)/12.0
-        
         yPred = self.Beta_Scoring(hist,crudeoil_history)
         
-        yPred_Long = yPred.dropna().sort_values(by=['Prediction'])[:25]
+        yPred_Long = yPred.dropna().sort_values(by=['Prediction'])[:20]
         
-        yPred_Short = yPred.dropna().sort_values(by=['Prediction'])[-25:]
+        yPred_Short = yPred.dropna().sort_values(by=['Prediction'])[-20:]
         
         Long,Short = len(yPred_Long.index),len(yPred_Short.index)
 
@@ -68,17 +86,15 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
             if holding.Symbol in yPred_Long.index or holding.Symbol in yPred_Short.index or holding.Symbol == self.IEF:
                 continue
             if holding.Invested:
-                self.Count_liquidations = + 1
                 self.Liquidate(holding.Symbol)
-        self.Debug(self.Count_liquidations)
     
         for i in yPred_Long.index:
-            self.SetHoldings(i, -0.50/Long) 
+            self.SetHoldings(i, 0.50/Long) 
             
         for i in yPred_Short.index:
-            self.SetHoldings(i, 0.50/Short) 
+            self.SetHoldings(i, -0.50/Short) 
             
-        self.SetHoldings(self.IEF, 0.95) 
+        self.SetHoldings(self.IEF, 1) #0.5-0.5+1 = 1
             
         self.nextLiquidate = self.Time + timedelta(self.rebalance_days)
         
@@ -91,41 +107,37 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
         
         pvalue = pd.DataFrame({ticker: model.pvalues[1] for ticker, model in OLSmodels.items()},index=["P-values"]).T
         
-        retained_tickers = pvalue[pvalue < 0.05].dropna().index
+        retained_tickers = pvalue[pvalue < 0.10].dropna().index #Only significant parameters interest us
         
         Beta = pd.DataFrame({ticker : model.params[1] for ticker , model in OLSmodels.items()},index=["Prediction"]).T
         
         Beta = Beta.loc[retained_tickers]
         
-        New_filter = Beta.dropna().index
-    
-        Beta = Beta.loc[New_filter]
-    
-       # Unsystematic_Var = pd.DataFrame({ticker: (model.resid).var()*12  for ticker , model in OLSmodels.items()},index=["Prediction"]).T
-        
-        #self.Debug(Unsystematic_Var)
-        
-        #Unsystematic_Var = Unsystematic_Var.loc[New_filter]
-        
         Garch_forecast_variance = self.Garch_volatility(crude_oil_hist)
         
-        Predictions = (Beta**2)*Garch_forecast_variance  #Unsystematic_Var
+        Predictions = (Beta**2)*Garch_forecast_variance #We should add up a 1 as in an AR(1) residuals are independentely distributed.However as it won't change anything in the ranking we didn't add it.
     
         return Predictions
         
     def Data_Reframe(self):
         
-        hist = self.History(self.symbols, 1800, Resolution.Daily).close.unstack(level=0).dropna(axis=1).resample('1M').last()
+        hist = self.History(self.symbols, 252, Resolution.Daily).close.unstack(level=0).dropna(axis=1)
         
-        rd = len(hist)
+        histb = hist.index[0]
         
-        crudeoil_history = self.History(QuandlOil,self.oil , 3000, Resolution.Daily).droplevel(level=0)
+        histend = hist.index[-1]
         
-        crudeoil_history = crudeoil_history[~crudeoil_history.index.duplicated(keep='last')].resample('1M').last().iloc[-rd:]
+        crudeoil_history = self.History(QuandlOil,self.oil , 500, Resolution.Daily).droplevel(level=0)
+        
+        hist = crudeoil_history[~crudeoil_history.index.duplicated(keep='last')].join(hist).loc[histb:histend].dropna()
+        
+        crudeoil_history = hist.iloc[:,:1]
+        
+        hist = hist.iloc[:,1:]
         
         hist,crudeoil_history = self.Log_returns(hist,crudeoil_history)
         
-        crudeoil_history.index = hist.index
+        crudeoil_history.index = hist.index #Make sure everything is fine
         
         return hist,crudeoil_history
         
@@ -137,46 +149,8 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
     def Garch_volatility(self,crudeoil_history):
         am = arch_model(crudeoil_history*100, p=1, o=1, q=1,mean='AR')
         res = am.fit(update_freq=1)
-        forecast_var = res.forecast(horizon=1)
-        forecast_var = (forecast_var.variance.iloc[-1][0]/(100**2))*12**(1/2)
+        forecast_var = res.conditional_volatility.iloc[-1]
         return forecast_var
-        
-    def OnSecuritiesChanged(self, changes):
-        
-        self.symbols = [x.Symbol for x in changes.AddedSecurities]
-        
-        for security in changes.RemovedSecurities:
-            if security.Invested:
-                self.Liquidate(security.Symbol, 'Removed from Universe')
-
-class TBill(PythonData):
-    
-    def GetSource(self, config, date, isLiveMode):
-        # Get the data source from Quandl
-        # Ascending order of the data file is essential!
-        return SubscriptionDataSource("https://www.quandl.com/api/v3/datasets/USTREASURY/BILLRATES.csv?api_key=zxb6rfszSQW5-SLkaj3t&order=asc", SubscriptionTransportMedium.RemoteFile)
-    
-    def Reader(self, config, line, date, isLiveMode):
-        tbill = TBill()
-        tbill.Symbol = config.Symbol
-        
-        # Example Line Format:
-        # Date      4 Wk Bank Discount Rate   
-        # 2017-06-01         0.8    
-        if not (line.strip() and line[0].isdigit()): return None
-        
-        # Parse the file based on how it is organized
-        try:
-            data = line.split(',')
-            value = float(data[1])*0.01
-            value = decimal.Decimal(value)
-            if value == 0: return None
-            tbill.Time = datetime.strptime(data[0], "%Y-%m-%d")
-            tbill.Value = value
-            tbill["Close"] = float(value)
-            return tbill;
-        except ValueError:
-            return None
             
 class QuandlOil(PythonQuandl):
     def __init__(self):
