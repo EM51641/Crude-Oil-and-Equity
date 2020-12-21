@@ -87,9 +87,9 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
             
             self.yPred = self.Beta_Scoring(hist,crudeoil_history).dropna().sort_values(by=['Prediction'])
             
-            self.yPred_H = self.yPred[-50:] #Select How many High Beta stocks to choose
+            self.yPred_H = self.yPred[-25:] #Select How many High Beta stocks to choose
             
-            self.yPred_L = self.yPred[:0] #Select How many Low Beta stocks to choose
+            self.yPred_L = self.yPred[:25] #Select How many Low Beta stocks to choose
             
             self.yPred = (self.yPred_H).append(self.yPred_L) # Merge Both
             
