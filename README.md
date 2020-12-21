@@ -22,7 +22,7 @@ Long Only Portfolios on High and Low Betas:
 
 Long/Short Portfolios on High and Low Betas:
 
-![alt text](https://github.com/EM51641/SuperOption/blob/master/APPCommands.png?raw=true)
+![alt text](https://github.com/EM51641/Crude-Oil-and-Equity/blob/main/Cumulated%2520returns%2520long%2520short.png?raw=true)
 
 Elyes Mahjoubi
 
