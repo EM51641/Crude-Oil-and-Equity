@@ -18,7 +18,7 @@ Long Only Portfolios on High Betas:
 
 Long Only Portfolios on High and Low Betas:
 
-![alt text](https://github.com/EM51641/SuperOption/blob/master/APPCommands.png?raw=true)
+![alt text](https://github.com/EM51641/Crude-Oil-and-Equity/blob/main/Cumulative%2520return%2520HLB%2520long%2520only.png?raw=true)
 
 Long/Short Portfolios on High and Low Betas:
 
