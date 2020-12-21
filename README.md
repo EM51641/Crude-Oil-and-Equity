@@ -14,15 +14,15 @@ QuantConnect Provides a Free server in order to test strategies.
 
 Long Only Portfolios on High Betas:
 
-
+![alt text](https://github.com/EM51641/SuperOption/blob/master/APPCommands.png?raw=true)
 
 Long Only Portfolios on High and Low Betas:
 
-
+![alt text](https://github.com/EM51641/SuperOption/blob/master/APPCommands.png?raw=true)
 
 Long/Short Portfolios on High and Low Betas:
 
-
+![alt text](https://github.com/EM51641/SuperOption/blob/master/APPCommands.png?raw=true)
 
 Elyes Mahjoubi
 
