@@ -7,7 +7,7 @@ Code to Download the Repository :
 ```
 $ git clone https://github.com/EM51641/Crude-Oil-and-Equity.git
 ```
-The Code is made to only work on the python ide of https://lQuantConnect.com .
+The Code is made to only work on the python ide of https://QuantConnect.com .
 
 Elyes Mahjoubi
 
