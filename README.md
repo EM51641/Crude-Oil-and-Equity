@@ -11,6 +11,19 @@ The Code is made to only work on the python ide of https://QuantConnect.com .
 
 QuantConnect Provides a Free server in order to test strategies.
 
+
+Long Only Portfolios on High Betas:
+
+
+
+Long Only Portfolios on High and Low Betas:
+
+
+
+Long/Short Portfolios on High and Low Betas:
+
+
+
 Elyes Mahjoubi
 
 Jerome van Eck Duymaer van Twist
