@@ -1,5 +1,8 @@
 # Crude-Oil-and-Equity
-Strategy Summary:
 
+Code to Download the Repository :
 
-![Image](https://github.com/EM51641/Crude-Oil-and-Equity/blob/main/Summary_pyfolio.jpg)
+```
+$ git clone https://github.com/EM51641/Crude-Oil-and-Equity.git
+```
+
