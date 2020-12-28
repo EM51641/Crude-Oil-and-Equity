@@ -208,7 +208,7 @@ class CrudeOilPredictsEqeuityReturns(QCAlgorithm):
         X = args[0]
         budgetting_weights = args[1]
         Margin_cs,portfolio_risk =  self.Margin_contribution(Weights,X)
-        RC_taken = np.square(Weights*Margin_cs/self.Lens - budgetting_weights*portfolio_risk).sum()#portfolio_risk
+        RC_taken = np.square(Weights*Margin_cs - budgetting_weights*portfolio_risk).sum()#portfolio_risk
         return RC_taken
         
     def Min_Var(self,w,args):
